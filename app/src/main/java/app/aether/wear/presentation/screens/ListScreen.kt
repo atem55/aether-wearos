@@ -1,5 +1,7 @@
 package app.aether.wear.presentation.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,16 +10,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -25,8 +33,6 @@ import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
-import androidx.wear.compose.material.Chip
-import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.ListHeader
@@ -51,12 +57,14 @@ fun ListScreen(
     pools: List<PowerPool>,
     now: Long,
     activeRegenId: String?,
+    regenHalted: Boolean,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
     onAdd: () -> Unit,
     onClear: () -> Unit,
     onAdjust: (String, Int) -> Unit,
     onArmRegen: (String) -> Unit,
+    onToggleHalt: () -> Unit,
 ) {
     if (pools.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -93,10 +101,12 @@ fun ListScreen(
                     pool = pool,
                     now = now,
                     armed = pool.id == activeRegenId,
+                    halted = regenHalted,
                     onOpen = { onOpen(pool.id) },
                     onDelete = { onDelete(pool.id) },
                     onAdjust = { onAdjust(pool.id, it) },
                     onArm = { onArmRegen(pool.id) },
+                    onToggleHalt = onToggleHalt,
                 )
             }
             if (pools.size < MAX_POOLS) {
@@ -131,36 +141,64 @@ private fun PoolChip(
     pool: PowerPool,
     now: Long,
     armed: Boolean,
+    halted: Boolean,
     onOpen: () -> Unit,
     onDelete: () -> Unit,
     onAdjust: (Int) -> Unit,
     onArm: () -> Unit,
+    onToggleHalt: () -> Unit,
 ) {
     val remain = remainingMs(pool, now)
     val frozen = frozenRemainingMs(pool)
+    val ticking = armed && !halted
     val extra = when {
-        armed && remain != null -> formatCountdown(remain)
+        ticking && remain != null -> formatCountdown(remain)
         pool.regenEnabled && pool.current < pool.max ->
             "Paused" + if (frozen != null) " ${formatCountdown(frozen)}" else ""
         pool.regenEnabled -> "Full · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
         else -> "Static"
     }
-    val extraColor = if (armed && remain != null) Teal else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+    val extraColor = if (ticking && remain != null) Teal else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Chip(
-                onClick = onOpen,
-                modifier = Modifier.weight(1f),
-                colors = ChipDefaults.secondaryChipColors(),
-                icon = { PowerRing(pool.current, pool.max, Modifier.size(26.dp), stroke = 5f) },
-                label = { Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                secondaryLabel = {
-                    Text(extra, maxLines = 1, overflow = TextOverflow.Ellipsis, color = extraColor)
-                },
-            )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colors.surface)
+                    .padding(start = 8.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onOpen),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PowerRing(pool.current, pool.max, Modifier.size(26.dp), stroke = 5f)
+                    Spacer(Modifier.width(6.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(extra, maxLines = 1, overflow = TextOverflow.Ellipsis, color = extraColor, style = MaterialTheme.typography.caption2)
+                    }
+                }
+                if (armed) {
+                    Button(
+                        onClick = onToggleHalt,
+                        modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
+                        colors = ButtonDefaults.primaryButtonColors(),
+                    ) {
+                        Icon(
+                            imageVector = if (halted) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                            contentDescription = if (halted) "Resume all regen" else "Pause all regen",
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+            }
             if (pool.regenEnabled) {
                 Button(
                     onClick = onArm,
