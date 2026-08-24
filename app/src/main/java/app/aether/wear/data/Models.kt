@@ -14,7 +14,7 @@ const val DEFAULT_INTERVAL_MINUTES = 5
 const val MIN_INTERVAL_MINUTES = 1
 const val MAX_INTERVAL_MINUTES = 180
 const val DEFAULT_INTERVAL_MS = DEFAULT_INTERVAL_MINUTES * 60_000L
-const val DEFAULT_POOL_COLOR = "#1E3A38"
+const val DEFAULT_POOL_COLOR = "#111113"
 
 @Serializable
 data class PowerPool(
@@ -45,19 +45,34 @@ data class PoolDraft(
 
 val NAME_PRESETS = listOf("Mana", "Spirits", "EP", "Blood", "Primal", "Ring")
 
+data class ColorSwatch(val name: String, val hex: String, val lightText: Boolean)
+
 val COLOR_SWATCHES = listOf(
-    "#1E3A38", "#1E3A5C", "#3A1E3A", "#3A1E1A", "#1A3A1E", "#3A2E14",
-    "#2B6B9E", "#6B3FA0", "#C45C4A", "#2E8A4A", "#C4922A", "#8FD0C8",
+    ColorSwatch("Black", "#111113", true),
+    ColorSwatch("White", "#F4F1EA", false),
+    ColorSwatch("Brown", "#5C3A21", true),
+    ColorSwatch("Blue", "#1E4F9E", true),
+    ColorSwatch("Red", "#B42A2A", true),
+    ColorSwatch("Green", "#1F7A3A", true),
+    ColorSwatch("Bronze", "#8A5524", true),
+    ColorSwatch("Gold", "#C9A227", false),
+    ColorSwatch("Ivory", "#EFE6C8", false),
+    ColorSwatch("Grey", "#6B6E74", true),
+    ColorSwatch("Silver", "#C5C8CC", false),
+    ColorSwatch("Purple", "#6B2FA0", true),
 )
 
 val PRESET_COLORS = mapOf(
-    "Mana" to "#2B6B9E",
-    "Spirits" to "#6B3FA0",
-    "EP" to "#C4922A",
-    "Blood" to "#C45C4A",
-    "Primal" to "#2E8A4A",
-    "Ring" to "#1E3A38",
+    "Mana" to "#1E4F9E",
+    "Spirits" to "#6B2FA0",
+    "EP" to "#C9A227",
+    "Blood" to "#B42A2A",
+    "Primal" to "#1F7A3A",
+    "Ring" to "#C5C8CC",
 )
+
+fun defaultLightText(hex: String): Boolean =
+    COLOR_SWATCHES.firstOrNull { it.hex.equals(hex, ignoreCase = true) }?.lightText ?: true
 
 fun newPoolId(): String = UUID.randomUUID().toString()
 
