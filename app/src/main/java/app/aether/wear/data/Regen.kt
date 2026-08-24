@@ -8,7 +8,10 @@ fun applyRegen(pool: PowerPool, now: Long): PowerPool {
             pool
         }
     }
-    val due = pool.nextRegenAt ?: return pool.copy(nextRegenAt = now + pool.intervalMs, pausedRemainingMs = null)
+    val due = pool.nextRegenAt ?: return pool.copy(
+        nextRegenAt = now + (pool.pausedRemainingMs ?: pool.intervalMs),
+        pausedRemainingMs = null,
+    )
     if (now < due) return pool
 
     val elapsed = now - due
@@ -37,6 +40,7 @@ fun resumeRegen(pool: PowerPool, now: Long): PowerPool {
     if (!pool.regenEnabled || pool.current >= pool.max) {
         return pool.copy(nextRegenAt = null, pausedRemainingMs = null)
     }
+    if (pool.nextRegenAt != null) return pool.copy(pausedRemainingMs = null)
     val remain = pool.pausedRemainingMs ?: pool.intervalMs
     return pool.copy(nextRegenAt = now + remain, pausedRemainingMs = null)
 }
