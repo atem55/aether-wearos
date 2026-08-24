@@ -26,6 +26,7 @@ data class PowerPool(
     val nextRegenAt: Long? = null,
     val createdAt: Long,
     val regenAmount: Int = DEFAULT_REGEN_AMOUNT,
+    val pausedRemainingMs: Long? = null,
 )
 
 data class PoolDraft(
@@ -46,6 +47,8 @@ fun minutesToMs(minutes: Int): Long = minutes.coerceAtLeast(MIN_INTERVAL_MINUTES
 fun msToMinutes(ms: Long): Int = (ms / 60_000L).toInt().coerceAtLeast(MIN_INTERVAL_MINUTES)
 
 fun regenAmountOf(pool: PowerPool): Int = pool.regenAmount.coerceAtLeast(MIN_REGEN_AMOUNT)
+
+fun firstRegenId(pools: List<PowerPool>): String? = pools.firstOrNull { it.regenEnabled }?.id
 
 fun intervalLabel(ms: Long): String {
     val minutes = ms / 60_000L
@@ -72,4 +75,10 @@ fun formatCountdown(ms: Long): String {
 fun remainingMs(pool: PowerPool, now: Long): Long? {
     if (!pool.regenEnabled || pool.current >= pool.max || pool.nextRegenAt == null) return null
     return (pool.nextRegenAt - now).coerceAtLeast(0)
+}
+
+fun frozenRemainingMs(pool: PowerPool): Long? {
+    if (!pool.regenEnabled || pool.current >= pool.max) return null
+    if (pool.nextRegenAt != null) return null
+    return pool.pausedRemainingMs
 }
