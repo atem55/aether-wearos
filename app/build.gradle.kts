@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.wear.compose:compose-material:1.4.1")
     implementation("androidx.wear.compose:compose-foundation:1.4.1")
+    implementation("androidx.wear:wear-input:1.1.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }

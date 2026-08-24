@@ -1,5 +1,8 @@
 package app.aether.wear.presentation.screens
 
+import android.app.RemoteInput
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,28 +11,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -44,6 +44,7 @@ import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.ToggleChip
 import androidx.wear.compose.material.ToggleChipDefaults
+import androidx.wear.input.RemoteInputIntentHelper
 import app.aether.wear.data.COLOR_SWATCHES
 import app.aether.wear.data.DEFAULT_INTERVAL_MINUTES
 import app.aether.wear.data.DEFAULT_POOL_COLOR
@@ -63,19 +64,45 @@ import app.aether.wear.data.minutesToMs
 import app.aether.wear.data.poolColor
 import app.aether.wear.data.poolInk
 
+private const val KEY_POOL_NAME = "pool_name"
+
 @Composable
 fun AddScreen(
     onCancel: () -> Unit,
     onSave: (PoolDraft) -> Unit,
 ) {
-    var name by remember { mutableStateOf("") }
-    var max by remember { mutableIntStateOf(DEFAULT_POOL_MAX) }
-    var startFull by remember { mutableStateOf(false) }
-    var regen by remember { mutableStateOf(false) }
-    var regenAmount by remember { mutableIntStateOf(DEFAULT_REGEN_AMOUNT) }
-    var intervalMin by remember { mutableIntStateOf(DEFAULT_INTERVAL_MINUTES) }
-    var colorHex by remember { mutableStateOf(DEFAULT_POOL_COLOR) }
-    var lightText by remember { mutableStateOf(true) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var max by rememberSaveable { mutableIntStateOf(DEFAULT_POOL_MAX) }
+    var startFull by rememberSaveable { mutableStateOf(false) }
+    var regen by rememberSaveable { mutableStateOf(false) }
+    var regenAmount by rememberSaveable { mutableIntStateOf(DEFAULT_REGEN_AMOUNT) }
+    var intervalMin by rememberSaveable { mutableIntStateOf(DEFAULT_INTERVAL_MINUTES) }
+    var colorHex by rememberSaveable { mutableStateOf(DEFAULT_POOL_COLOR) }
+    var lightText by rememberSaveable { mutableStateOf(true) }
+
+    val nameLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val typed = result.data
+            ?.let { RemoteInput.getResultsFromIntent(it) }
+            ?.getCharSequence(KEY_POOL_NAME)
+            ?.toString()
+            ?.trim()
+            .orEmpty()
+        if (typed.isNotEmpty()) name = typed.take(18)
+    }
+
+    fun openNameKeyboard() {
+        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+        val inputs = listOf(
+            RemoteInput.Builder(KEY_POOL_NAME)
+                .setLabel("Pool name")
+                .setAllowFreeFormInput(true)
+                .build(),
+        )
+        RemoteInputIntentHelper.putRemoteInputsExtra(intent, inputs)
+        nameLauncher.launch(intent)
+    }
 
     val listState = rememberScalingLazyListState()
     Scaffold(positionIndicator = { PositionIndicator(scalingLazyListState = listState) }) {
@@ -102,23 +129,16 @@ fun AddScreen(
                 }
             }
             item {
-                BasicTextField(
-                    value = name,
-                    onValueChange = { if (it.length <= 18) name = it },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.title3.copy(
-                        color = MaterialTheme.colors.onBackground,
-                        textAlign = TextAlign.Center,
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colors.primary),
+                CompactChip(
+                    onClick = { openNameKeyboard() },
                     modifier = Modifier.fillMaxWidth(),
-                    decorationBox = { inner ->
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            if (name.isEmpty()) {
-                                Text("Pool name", color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f))
-                            }
-                            inner()
-                        }
+                    icon = { Icon(Icons.Filled.Edit, contentDescription = "Type name") },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    label = {
+                        Text(
+                            if (name.isEmpty()) "Tap to type name" else name,
+                            maxLines = 1,
+                        )
                     },
                 )
             }
