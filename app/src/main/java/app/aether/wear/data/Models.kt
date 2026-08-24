@@ -14,6 +14,7 @@ const val DEFAULT_INTERVAL_MINUTES = 5
 const val MIN_INTERVAL_MINUTES = 1
 const val MAX_INTERVAL_MINUTES = 180
 const val DEFAULT_INTERVAL_MS = DEFAULT_INTERVAL_MINUTES * 60_000L
+const val DEFAULT_POOL_COLOR = "#1E3A38"
 
 @Serializable
 data class PowerPool(
@@ -27,6 +28,8 @@ data class PowerPool(
     val createdAt: Long,
     val regenAmount: Int = DEFAULT_REGEN_AMOUNT,
     val pausedRemainingMs: Long? = null,
+    val colorHex: String = DEFAULT_POOL_COLOR,
+    val lightText: Boolean = true,
 )
 
 data class PoolDraft(
@@ -36,9 +39,25 @@ data class PoolDraft(
     val regenEnabled: Boolean,
     val regenAmount: Int,
     val intervalMs: Long,
+    val colorHex: String = DEFAULT_POOL_COLOR,
+    val lightText: Boolean = true,
 )
 
 val NAME_PRESETS = listOf("Mana", "Spirits", "EP", "Blood", "Primal", "Ring")
+
+val COLOR_SWATCHES = listOf(
+    "#1E3A38", "#1E3A5C", "#3A1E3A", "#3A1E1A", "#1A3A1E", "#3A2E14",
+    "#2B6B9E", "#6B3FA0", "#C45C4A", "#2E8A4A", "#C4922A", "#8FD0C8",
+)
+
+val PRESET_COLORS = mapOf(
+    "Mana" to "#2B6B9E",
+    "Spirits" to "#6B3FA0",
+    "EP" to "#C4922A",
+    "Blood" to "#C45C4A",
+    "Primal" to "#2E8A4A",
+    "Ring" to "#1E3A38",
+)
 
 fun newPoolId(): String = UUID.randomUUID().toString()
 
@@ -82,3 +101,15 @@ fun frozenRemainingMs(pool: PowerPool): Long? {
     if (pool.nextRegenAt != null) return null
     return pool.pausedRemainingMs
 }
+
+fun poolColor(hex: String): androidx.compose.ui.graphics.Color {
+    val raw = if (hex.startsWith("#")) hex else "#$hex"
+    val parsed = runCatching { android.graphics.Color.parseColor(raw) }.getOrElse {
+        android.graphics.Color.parseColor(DEFAULT_POOL_COLOR)
+    }
+    return androidx.compose.ui.graphics.Color(parsed)
+}
+
+fun poolInk(lightText: Boolean): androidx.compose.ui.graphics.Color =
+    if (lightText) androidx.compose.ui.graphics.Color(0xFFF2EFE8)
+    else androidx.compose.ui.graphics.Color(0xFF111113)
