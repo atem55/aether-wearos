@@ -30,6 +30,7 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.formatCountdown
+import app.aether.wear.data.frozenRemainingMs
 import app.aether.wear.data.intervalLabel
 import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.remainingMs
@@ -40,6 +41,7 @@ import app.aether.wear.presentation.theme.Teal
 fun DetailScreen(
     pool: PowerPool,
     now: Long,
+    ticking: Boolean,
     onBack: () -> Unit,
     onAdjust: (Int) -> Unit,
     onDelete: () -> Unit,
@@ -121,10 +123,13 @@ fun DetailScreen(
             }
         }
 
+        val frozen = frozenRemainingMs(pool)
         val caption = when {
-            remain != null -> "NEXT  ${formatCountdown(remain)}"
+            ticking && remain != null -> "NEXT  ${formatCountdown(remain)}"
+            pool.regenEnabled && pool.current < pool.max ->
+                "Paused" + if (frozen != null) "  ${formatCountdown(frozen)}" else ""
             pool.regenEnabled ->
-                "${if (pool.current >= pool.max) "Full" else "Regen"} · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
+                "Full · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
             else -> "Static pool"
         }
         Text(
