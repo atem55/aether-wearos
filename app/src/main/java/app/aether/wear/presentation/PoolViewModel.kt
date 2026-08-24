@@ -13,10 +13,10 @@ import app.aether.wear.data.PoolRepository
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.afterSpend
 import app.aether.wear.data.applyRegen
-import app.aether.wear.data.armRegen
 import app.aether.wear.data.firstRegenId
 import app.aether.wear.data.newPoolId
 import app.aether.wear.data.pauseRegen
+import app.aether.wear.data.syncRegen
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +36,7 @@ sealed interface Route {
 data class UiState(
     val pools: List<PowerPool> = emptyList(),
     val activeRegenId: String? = null,
+    val regenHalted: Boolean = false,
     val route: Route = Route.Pools,
     val now: Long = System.currentTimeMillis(),
     val ready: Boolean = false,
@@ -52,16 +53,18 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
             repo.saved.collectLatest { stored ->
                 val now = System.currentTimeMillis()
                 val armed = stored.activeRegenId
-                val caught = stored.pools.map { p ->
-                    if (p.id == armed) applyRegen(p, now) else pauseRegen(p, now)
-                }
+                val halted = stored.regenHalted
+                val caught = syncRegen(stored.pools, armed, now, halted)
                 _state.value = _state.value.copy(
                     pools = caught,
                     activeRegenId = armed,
+                    regenHalted = halted,
                     now = now,
                     ready = true,
                 )
-                if (caught != stored.pools || armed != stored.activeRegenId) persist(caught, armed)
+                if (caught != stored.pools || armed != stored.activeRegenId || halted != stored.regenHalted) {
+                    persist(caught, armed, halted)
+                }
             }
         }
         viewModelScope.launch {
@@ -76,22 +79,27 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
         val current = _state.value
         val armed = current.activeRegenId
+        val halted = current.regenHalted
         val next = current.pools.map { p ->
-            if (p.id == armed) applyRegen(p, now) else pauseRegen(p, now)
+            if (!halted && p.id == armed) applyRegen(p, now) else pauseRegen(p, now)
         }
         val changed = next != current.pools
         _state.value = current.copy(pools = next, now = now)
-        if (changed) persist(next, armed)
+        if (changed) persist(next, armed, halted)
     }
 
-    private fun persist(pools: List<PowerPool>, activeRegenId: String?) {
+    private fun persist(pools: List<PowerPool>, activeRegenId: String?, regenHalted: Boolean) {
         persistJob?.cancel()
-        persistJob = viewModelScope.launch { repo.save(pools, activeRegenId) }
+        persistJob = viewModelScope.launch { repo.save(pools, activeRegenId, regenHalted) }
     }
 
-    private fun commit(pools: List<PowerPool>, activeRegenId: String? = _state.value.activeRegenId) {
-        _state.value = _state.value.copy(pools = pools, activeRegenId = activeRegenId)
-        persist(pools, activeRegenId)
+    private fun commit(
+        pools: List<PowerPool>,
+        activeRegenId: String? = _state.value.activeRegenId,
+        regenHalted: Boolean = _state.value.regenHalted,
+    ) {
+        _state.value = _state.value.copy(pools = pools, activeRegenId = activeRegenId, regenHalted = regenHalted)
+        persist(pools, activeRegenId, regenHalted)
     }
 
     fun open(id: String) { _state.value = _state.value.copy(route = Route.Detail(id)) }
@@ -137,7 +145,7 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         val nextPools = pools + pool
         var armed = _state.value.activeRegenId
         if (draft.regenEnabled && armed == null) armed = pool.id
-        commit(armRegen(nextPools, armed, now), armed)
+        commit(syncRegen(nextPools, armed, now, _state.value.regenHalted), armed)
         _state.value = _state.value.copy(route = Route.Pools)
     }
 
@@ -146,12 +154,12 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         val pools = _state.value.pools.filterNot { it.id == id }
         var armed = _state.value.activeRegenId
         if (armed == id) armed = firstRegenId(pools)
-        commit(armRegen(pools, armed, now), armed)
+        commit(syncRegen(pools, armed, now, _state.value.regenHalted), armed)
         _state.value = _state.value.copy(route = Route.Pools)
     }
 
     fun clearAll() {
-        commit(emptyList(), null)
+        commit(emptyList(), null, false)
         _state.value = _state.value.copy(route = Route.Pools)
     }
 
@@ -159,16 +167,23 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         val target = _state.value.pools.firstOrNull { it.id == id } ?: return
         if (!target.regenEnabled) return
         val now = System.currentTimeMillis()
-        commit(armRegen(_state.value.pools, id, now), id)
+        commit(syncRegen(_state.value.pools, id, now, _state.value.regenHalted), id)
+    }
+
+    fun toggleRegenHalt() {
+        val now = System.currentTimeMillis()
+        val halted = !_state.value.regenHalted
+        commit(syncRegen(_state.value.pools, _state.value.activeRegenId, now, halted), regenHalted = halted)
     }
 
     fun adjust(id: String, delta: Int) {
         val now = System.currentTimeMillis()
         val armed = _state.value.activeRegenId
+        val tickingId = if (_state.value.regenHalted) null else armed
         var emptied = false
         val next = _state.value.pools.map { p ->
             if (p.id != id) return@map p
-            val updated = afterSpend(p, p.current + delta, now, p.id == armed)
+            val updated = afterSpend(p, p.current + delta, now, p.id == tickingId)
             if (p.regenEnabled && p.current > 0 && updated.current == 0) emptied = true
             updated
         }
