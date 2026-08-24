@@ -22,7 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 sealed interface Route {
@@ -50,22 +50,19 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            repo.saved.collectLatest { stored ->
-                val now = System.currentTimeMillis()
-                val armed = stored.activeRegenId
-                val halted = stored.regenHalted
-                val caught = syncRegen(stored.pools, armed, now, halted)
-                _state.value = _state.value.copy(
-                    pools = caught,
-                    activeRegenId = armed,
-                    regenHalted = halted,
-                    now = now,
-                    ready = true,
-                )
-                if (caught != stored.pools || armed != stored.activeRegenId || halted != stored.regenHalted) {
-                    persist(caught, armed, halted)
-                }
-            }
+            val stored = repo.saved.first()
+            val now = System.currentTimeMillis()
+            val armed = stored.activeRegenId
+            val halted = stored.regenHalted
+            val caught = syncRegen(stored.pools, armed, now, halted)
+            _state.value = _state.value.copy(
+                pools = caught,
+                activeRegenId = armed,
+                regenHalted = halted,
+                now = now,
+                ready = true,
+            )
+            if (caught != stored.pools) persist(caught, armed, halted)
         }
         viewModelScope.launch {
             while (true) {
@@ -83,8 +80,10 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         val next = current.pools.map { p ->
             if (!halted && p.id == armed) applyRegen(p, now) else pauseRegen(p, now)
         }
+        val latest = _state.value
+        if (latest.regenHalted != halted || latest.activeRegenId != armed) return
         val changed = next != current.pools
-        _state.value = current.copy(pools = next, now = now)
+        _state.value = latest.copy(pools = next, now = now)
         if (changed) persist(next, armed, halted)
     }
 
@@ -166,6 +165,7 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
     fun setActiveRegen(id: String) {
         val target = _state.value.pools.firstOrNull { it.id == id } ?: return
         if (!target.regenEnabled) return
+        if (_state.value.activeRegenId == id) return
         val now = System.currentTimeMillis()
         commit(syncRegen(_state.value.pools, id, now, _state.value.regenHalted), id)
     }
