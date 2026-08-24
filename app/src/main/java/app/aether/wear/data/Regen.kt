@@ -50,6 +50,9 @@ fun armRegen(pools: List<PowerPool>, armedId: String?, now: Long): List<PowerPoo
         }
     }
 
+fun syncRegen(pools: List<PowerPool>, armedId: String?, now: Long, halted: Boolean): List<PowerPool> =
+    if (halted) pools.map { pauseRegen(it, now) } else armRegen(pools, armedId, now)
+
 fun afterSpend(pool: PowerPool, nextCurrent: Int, now: Long, ticking: Boolean): PowerPool {
     val current = nextCurrent.coerceIn(0, pool.max)
     val next = pool.copy(current = current)
