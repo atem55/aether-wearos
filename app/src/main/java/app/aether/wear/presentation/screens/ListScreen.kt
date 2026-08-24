@@ -1,5 +1,6 @@
 package app.aether.wear.presentation.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import app.aether.wear.data.MAX_POOLS
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.formatCountdown
 import app.aether.wear.data.intervalLabel
+import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.remainingMs
 import app.aether.wear.presentation.components.PowerRing
 import app.aether.wear.presentation.theme.Danger
@@ -47,22 +50,25 @@ fun ListScreen(
     onDelete: (String) -> Unit,
     onAdd: () -> Unit,
     onClear: () -> Unit,
+    onAdjust: (String, Int) -> Unit,
 ) {
     if (pools.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PowerRing(0, 1, Modifier.size(72.dp), stroke = 10f)
-                Spacer(Modifier.height(10.dp))
+                PowerRing(0, 1, Modifier.size(64.dp), stroke = 9f)
+                Spacer(Modifier.height(8.dp))
                 Text("AETHER", style = MaterialTheme.typography.title2)
                 Text(
                     "Add a power pool",
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                 )
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = onAdd) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add pool")
-                }
+                Spacer(Modifier.height(10.dp))
+                CompactChip(
+                    onClick = onAdd,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    label = { Text("Add pool") },
+                )
             }
         }
         return
@@ -82,15 +88,14 @@ fun ListScreen(
                     now = now,
                     onOpen = { onOpen(pool.id) },
                     onDelete = { onDelete(pool.id) },
+                    onAdjust = { onAdjust(pool.id, it) },
                 )
             }
             if (pools.size < MAX_POOLS) {
                 item {
-                    Chip(
+                    CompactChip(
                         onClick = onAdd,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ChipDefaults.secondaryChipColors(),
-                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         label = { Text("Add pool") },
                     )
                 }
@@ -119,43 +124,62 @@ private fun PoolChip(
     now: Long,
     onOpen: () -> Unit,
     onDelete: () -> Unit,
+    onAdjust: (Int) -> Unit,
 ) {
     val remain = remainingMs(pool, now)
     val extra = when {
         remain != null -> formatCountdown(remain)
-        pool.regenEnabled -> "Full · ${intervalLabel(pool.intervalMs)}"
-        else -> null
+        pool.regenEnabled && pool.current >= pool.max -> "Full · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
+        pool.regenEnabled -> "+${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
+        else -> "Static"
     }
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Chip(
             onClick = onOpen,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             colors = ChipDefaults.secondaryChipColors(),
-            icon = { PowerRing(pool.current, pool.max, Modifier.size(28.dp), stroke = 5f) },
+            icon = { PowerRing(pool.current, pool.max, Modifier.size(26.dp), stroke = 5f) },
             label = { Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             secondaryLabel = {
                 Text(
-                    buildString {
-                        append(pool.current)
-                        append(" / ")
-                        append(pool.max)
-                        if (extra != null) {
-                            append("  ")
-                            append(extra)
-                        }
-                    },
+                    extra,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = if (remain != null) Teal else MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                 )
             },
         )
-        Button(
-            onClick = onDelete,
-            modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
-            colors = ButtonDefaults.secondaryButtonColors(),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Delete, contentDescription = "Delete ${pool.name}", modifier = Modifier.size(16.dp))
+            Button(
+                onClick = { onAdjust(-1) },
+                enabled = pool.current > 0,
+                modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
+                colors = ButtonDefaults.secondaryButtonColors(),
+            ) {
+                Icon(Icons.Filled.Remove, contentDescription = "Decrease ${pool.name}", modifier = Modifier.size(16.dp))
+            }
+            Text(
+                "${pool.current} / ${pool.max}",
+                style = MaterialTheme.typography.title3,
+            )
+            Button(
+                onClick = { onAdjust(1) },
+                enabled = pool.current < pool.max,
+                modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Increase ${pool.name}", modifier = Modifier.size(16.dp))
+            }
+            Button(
+                onClick = onDelete,
+                modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
+                colors = ButtonDefaults.secondaryButtonColors(),
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete ${pool.name}", modifier = Modifier.size(16.dp))
+            }
         }
     }
 }

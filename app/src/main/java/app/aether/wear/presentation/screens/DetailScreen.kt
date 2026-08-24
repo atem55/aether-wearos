@@ -31,9 +31,9 @@ import androidx.wear.compose.material.Text
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.formatCountdown
 import app.aether.wear.data.intervalLabel
+import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.remainingMs
 import app.aether.wear.presentation.components.PowerRing
-import app.aether.wear.presentation.components.holdRepeat
 import app.aether.wear.presentation.theme.Teal
 
 @Composable
@@ -99,27 +99,23 @@ fun DetailScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             Button(
-                onClick = {},
+                onClick = {
+                    haptic()
+                    onAdjust(-1)
+                },
                 enabled = pool.current > 0,
-                modifier = Modifier
-                    .size(ButtonDefaults.DefaultButtonSize)
-                    .holdRepeat(pool.current > 0) {
-                        haptic()
-                        onAdjust(-1)
-                    },
+                modifier = Modifier.size(ButtonDefaults.DefaultButtonSize),
                 colors = ButtonDefaults.secondaryButtonColors(),
             ) {
                 Icon(Icons.Filled.Remove, contentDescription = "Decrease")
             }
             Button(
-                onClick = {},
+                onClick = {
+                    haptic()
+                    onAdjust(1)
+                },
                 enabled = pool.current < pool.max,
-                modifier = Modifier
-                    .size(ButtonDefaults.DefaultButtonSize)
-                    .holdRepeat(pool.current < pool.max) {
-                        haptic()
-                        onAdjust(1)
-                    },
+                modifier = Modifier.size(ButtonDefaults.DefaultButtonSize),
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Increase")
             }
@@ -127,7 +123,8 @@ fun DetailScreen(
 
         val caption = when {
             remain != null -> "NEXT  ${formatCountdown(remain)}"
-            pool.regenEnabled -> "Full · regen ${intervalLabel(pool.intervalMs)}"
+            pool.regenEnabled ->
+                "${if (pool.current >= pool.max) "Full" else "Regen"} · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
             else -> "Static pool"
         }
         Text(
