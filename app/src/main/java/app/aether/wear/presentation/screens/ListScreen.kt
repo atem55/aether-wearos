@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,22 +37,26 @@ import androidx.wear.compose.material.Text
 import app.aether.wear.data.MAX_POOLS
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.formatCountdown
+import app.aether.wear.data.frozenRemainingMs
 import app.aether.wear.data.intervalLabel
 import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.remainingMs
 import app.aether.wear.presentation.components.PowerRing
 import app.aether.wear.presentation.theme.Danger
+import app.aether.wear.presentation.theme.Muted
 import app.aether.wear.presentation.theme.Teal
 
 @Composable
 fun ListScreen(
     pools: List<PowerPool>,
     now: Long,
+    activeRegenId: String?,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
     onAdd: () -> Unit,
     onClear: () -> Unit,
     onAdjust: (String, Int) -> Unit,
+    onArmRegen: (String) -> Unit,
 ) {
     if (pools.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -86,9 +92,11 @@ fun ListScreen(
                 PoolChip(
                     pool = pool,
                     now = now,
+                    armed = pool.id == activeRegenId,
                     onOpen = { onOpen(pool.id) },
                     onDelete = { onDelete(pool.id) },
                     onAdjust = { onAdjust(pool.id, it) },
+                    onArm = { onArmRegen(pool.id) },
                 )
             }
             if (pools.size < MAX_POOLS) {
@@ -122,33 +130,52 @@ fun ListScreen(
 private fun PoolChip(
     pool: PowerPool,
     now: Long,
+    armed: Boolean,
     onOpen: () -> Unit,
     onDelete: () -> Unit,
     onAdjust: (Int) -> Unit,
+    onArm: () -> Unit,
 ) {
     val remain = remainingMs(pool, now)
+    val frozen = frozenRemainingMs(pool)
     val extra = when {
-        remain != null -> formatCountdown(remain)
-        pool.regenEnabled && pool.current >= pool.max -> "Full · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
-        pool.regenEnabled -> "+${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
+        armed && remain != null -> formatCountdown(remain)
+        pool.regenEnabled && pool.current < pool.max ->
+            "Paused" + if (frozen != null) " ${formatCountdown(frozen)}" else ""
+        pool.regenEnabled -> "Full · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
         else -> "Static"
     }
+    val extraColor = if (armed && remain != null) Teal else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Chip(
-            onClick = onOpen,
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = ChipDefaults.secondaryChipColors(),
-            icon = { PowerRing(pool.current, pool.max, Modifier.size(26.dp), stroke = 5f) },
-            label = { Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            secondaryLabel = {
-                Text(
-                    extra,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (remain != null) Teal else MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                )
-            },
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Chip(
+                onClick = onOpen,
+                modifier = Modifier.weight(1f),
+                colors = ChipDefaults.secondaryChipColors(),
+                icon = { PowerRing(pool.current, pool.max, Modifier.size(26.dp), stroke = 5f) },
+                label = { Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                secondaryLabel = {
+                    Text(extra, maxLines = 1, overflow = TextOverflow.Ellipsis, color = extraColor)
+                },
+            )
+            if (pool.regenEnabled) {
+                Button(
+                    onClick = onArm,
+                    modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
+                    colors = ButtonDefaults.secondaryButtonColors(),
+                ) {
+                    Icon(
+                        imageVector = if (armed) Icons.Filled.RadioButtonChecked else Icons.Filled.RadioButtonUnchecked,
+                        contentDescription = if (armed) "Regen armed" else "Arm regen",
+                        tint = if (armed) Teal else Muted,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -162,10 +189,7 @@ private fun PoolChip(
             ) {
                 Icon(Icons.Filled.Remove, contentDescription = "Decrease ${pool.name}", modifier = Modifier.size(16.dp))
             }
-            Text(
-                "${pool.current} / ${pool.max}",
-                style = MaterialTheme.typography.title3,
-            )
+            Text("${pool.current} / ${pool.max}", style = MaterialTheme.typography.title3)
             Button(
                 onClick = { onAdjust(1) },
                 enabled = pool.current < pool.max,
