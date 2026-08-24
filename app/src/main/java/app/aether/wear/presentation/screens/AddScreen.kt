@@ -57,6 +57,7 @@ import app.aether.wear.data.MIN_REGEN_AMOUNT
 import app.aether.wear.data.NAME_PRESETS
 import app.aether.wear.data.PRESET_COLORS
 import app.aether.wear.data.PoolDraft
+import app.aether.wear.data.defaultLightText
 import app.aether.wear.data.minutesToMs
 import app.aether.wear.data.poolColor
 import app.aether.wear.data.poolInk
@@ -131,7 +132,9 @@ fun AddScreen(
                             CompactChip(
                                 onClick = {
                                     name = preset
-                                    colorHex = PRESET_COLORS[preset] ?: colorHex
+                                    val next = PRESET_COLORS[preset] ?: colorHex
+                                    colorHex = next
+                                    lightText = defaultLightText(next)
                                 },
                                 modifier = Modifier.weight(1f),
                                 colors = if (on) ChipDefaults.primaryChipColors()
@@ -159,19 +162,22 @@ fun AddScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
                         row.forEach { swatch ->
-                            val on = colorHex.equals(swatch, ignoreCase = true)
+                            val on = colorHex.equals(swatch.hex, ignoreCase = true)
                             Box(
                                 modifier = Modifier
                                     .size(22.dp)
                                     .clip(CircleShape)
-                                    .background(poolColor(swatch))
+                                    .background(poolColor(swatch.hex))
                                     .border(
                                         width = if (on) 2.dp else 1.dp,
                                         color = if (on) MaterialTheme.colors.onBackground
                                         else MaterialTheme.colors.onSurface.copy(alpha = 0.25f),
                                         shape = CircleShape,
                                     )
-                                    .clickable { colorHex = swatch },
+                                    .clickable {
+                                        colorHex = swatch.hex
+                                        lightText = swatch.lightText
+                                    },
                             )
                         }
                     }
