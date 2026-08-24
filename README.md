@@ -8,12 +8,13 @@ Source: [github.com/atem55/aether-wearos](https://github.com/atem55/aether-wearo
 
 ## What it does
 
-- Add up to 10 named pools (Mana, Stamina, Faith, Rage, Will, Chi, or a custom name)
+- Add up to 10 named pools (Mana, Spirits, EP, Blood, Primal, Ring, or a custom name)
 - Set a maximum (1–999)
-- Optional regen: **1 point** on an interval you pick (10s–1h)
+- **Start full?** — on starts at max, off starts at 0
+- Optional regen: amount + interval in minutes (e.g. 1 every 5 minutes)
 - Regen never goes above max; the timer only runs while you are below max
 - Missed ticks catch up if the app was in the background
-- Scroll the list, tap a pool, spend with + / − (hold to repeat)
+- Main list has + / − on each pool, plus a compact **Add pool** button
 - Trash a pool, or clear all
 
 ## Install on your Galaxy Watch Ultra

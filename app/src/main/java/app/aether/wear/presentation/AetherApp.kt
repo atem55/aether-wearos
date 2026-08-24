@@ -52,6 +52,7 @@ fun AetherApp(vm: PoolViewModel = viewModel()) {
                             onDelete = { vm.askDelete(it, fromDetail = false) },
                             onAdd = vm::openAdd,
                             onClear = vm::askClear,
+                            onAdjust = vm::adjust,
                         )
                         is Route.Detail -> {
                             val pool = state.pools.firstOrNull { it.id == dest.id }

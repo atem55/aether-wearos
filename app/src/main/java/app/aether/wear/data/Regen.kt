@@ -13,7 +13,7 @@ fun applyRegen(pool: PowerPool, now: Long): PowerPool {
 
     val elapsed = now - due
     val ticks = (elapsed / pool.intervalMs) + 1
-    val current = minOf(pool.max, pool.current + (ticks * REGEN_AMOUNT).toInt())
+    val current = minOf(pool.max, pool.current + (ticks * regenAmountOf(pool)).toInt())
     return if (current >= pool.max) {
         pool.copy(current = pool.max, nextRegenAt = null)
     } else {

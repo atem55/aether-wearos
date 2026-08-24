@@ -99,20 +99,22 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
             if (pools.size >= MAX_POOLS) return@updatePools pools
             val name = draft.name.trim().ifEmpty { "Pool ${pools.size + 1}" }
             val max = draft.max.coerceIn(1, 999)
+            val current = if (draft.startFull) max else 0
+            val now = System.currentTimeMillis()
             val pool = PowerPool(
                 id = newPoolId(),
                 name = name,
-                current = max,
+                current = current,
                 max = max,
                 regenEnabled = draft.regenEnabled,
+                regenAmount = draft.regenAmount.coerceIn(1, 99),
                 intervalMs = draft.intervalMs,
-                nextRegenAt = null,
-                createdAt = System.currentTimeMillis(),
+                nextRegenAt = if (draft.regenEnabled && current < max) now + draft.intervalMs else null,
+                createdAt = now,
             )
             pools + pool
         }
-        val id = _state.value.pools.lastOrNull()?.id
-        _state.value = _state.value.copy(route = if (id != null) Route.Detail(id) else Route.Pools)
+        _state.value = _state.value.copy(route = Route.Pools)
     }
 
     fun remove(id: String) {

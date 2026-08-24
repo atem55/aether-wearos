@@ -7,8 +7,13 @@ const val MAX_POOLS = 10
 const val MIN_POOL_MAX = 1
 const val MAX_POOL_MAX = 999
 const val DEFAULT_POOL_MAX = 10
-const val DEFAULT_INTERVAL_MS = 5L * 60_000L
-const val REGEN_AMOUNT = 1
+const val DEFAULT_REGEN_AMOUNT = 1
+const val MIN_REGEN_AMOUNT = 1
+const val MAX_REGEN_AMOUNT = 99
+const val DEFAULT_INTERVAL_MINUTES = 5
+const val MIN_INTERVAL_MINUTES = 1
+const val MAX_INTERVAL_MINUTES = 180
+const val DEFAULT_INTERVAL_MS = DEFAULT_INTERVAL_MINUTES * 60_000L
 
 @Serializable
 data class PowerPool(
@@ -20,35 +25,34 @@ data class PowerPool(
     val intervalMs: Long,
     val nextRegenAt: Long? = null,
     val createdAt: Long,
+    val regenAmount: Int = DEFAULT_REGEN_AMOUNT,
 )
 
 data class PoolDraft(
     val name: String,
     val max: Int,
+    val startFull: Boolean,
     val regenEnabled: Boolean,
+    val regenAmount: Int,
     val intervalMs: Long,
 )
 
-val NAME_PRESETS = listOf("Mana", "Stamina", "Faith", "Rage", "Will", "Chi")
-
-val INTERVAL_PRESETS = listOf(
-    "10s" to 10_000L,
-    "30s" to 30_000L,
-    "1m" to 60_000L,
-    "5m" to 5 * 60_000L,
-    "10m" to 10 * 60_000L,
-    "15m" to 15 * 60_000L,
-    "30m" to 30 * 60_000L,
-    "1h" to 60 * 60_000L,
-)
+val NAME_PRESETS = listOf("Mana", "Spirits", "EP", "Blood", "Primal", "Ring")
 
 fun newPoolId(): String = UUID.randomUUID().toString()
 
+fun minutesToMs(minutes: Int): Long = minutes.coerceAtLeast(MIN_INTERVAL_MINUTES) * 60_000L
+
+fun msToMinutes(ms: Long): Int = (ms / 60_000L).toInt().coerceAtLeast(MIN_INTERVAL_MINUTES)
+
+fun regenAmountOf(pool: PowerPool): Int = pool.regenAmount.coerceAtLeast(MIN_REGEN_AMOUNT)
+
 fun intervalLabel(ms: Long): String {
-    INTERVAL_PRESETS.firstOrNull { it.second == ms }?.let { return it.first }
+    val minutes = ms / 60_000L
     return when {
+        ms % 60_000L == 0L && minutes >= 1L -> "${minutes}m"
         ms < 60_000L -> "${ms / 1000}s"
-        ms < 3_600_000L -> "${ms / 60_000}m"
+        ms < 3_600_000L -> "${minutes}m"
         else -> "${ms / 3_600_000}h"
     }
 }
