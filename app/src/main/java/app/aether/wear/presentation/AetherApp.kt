@@ -48,11 +48,13 @@ fun AetherApp(vm: PoolViewModel = viewModel()) {
                         is Route.Pools -> ListScreen(
                             pools = state.pools,
                             now = state.now,
+                            activeRegenId = state.activeRegenId,
                             onOpen = vm::open,
                             onDelete = { vm.askDelete(it, fromDetail = false) },
                             onAdd = vm::openAdd,
                             onClear = vm::askClear,
                             onAdjust = vm::adjust,
+                            onArmRegen = vm::setActiveRegen,
                         )
                         is Route.Detail -> {
                             val pool = state.pools.firstOrNull { it.id == dest.id }
@@ -62,6 +64,7 @@ fun AetherApp(vm: PoolViewModel = viewModel()) {
                                 DetailScreen(
                                     pool = pool,
                                     now = state.now,
+                                    ticking = pool.id == state.activeRegenId,
                                     onBack = vm::back,
                                     onAdjust = { vm.adjust(pool.id, it) },
                                     onDelete = { vm.askDelete(pool.id, fromDetail = true) },

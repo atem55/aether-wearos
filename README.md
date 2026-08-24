@@ -13,7 +13,9 @@ Source: [github.com/atem55/aether-wearos](https://github.com/atem55/aether-wearo
 - **Start full?** — on starts at max, off starts at 0
 - Optional regen: amount + interval in minutes (e.g. 1 every 5 minutes)
 - Regen never goes above max; the timer only runs while you are below max
-- Missed ticks catch up if the app was in the background
+- Regenerating pools have a radio on the right — only the selected one counts down; the others pause
+- A regenerating pool hitting 0 fires a strong vibration
+- Missed ticks on the armed pool catch up if the app was in the background
 - Main list has + / − on each pool, plus a compact **Add pool** button
 - Trash a pool, or clear all
 
