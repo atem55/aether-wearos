@@ -140,6 +140,8 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
             nextRegenAt = null,
             pausedRemainingMs = if (draft.regenEnabled && current < max) draft.intervalMs else null,
             createdAt = now,
+            colorHex = draft.colorHex,
+            lightText = draft.lightText,
         )
         val nextPools = pools + pool
         var armed = _state.value.activeRegenId
