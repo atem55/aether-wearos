@@ -1,5 +1,6 @@
 package app.aether.wear.presentation.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -41,13 +43,14 @@ import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import app.aether.wear.data.MAX_POOLS
+import app.aether.wear.R
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.formatCountdown
 import app.aether.wear.data.frozenRemainingMs
 import app.aether.wear.data.intervalLabel
+import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.poolColor
 import app.aether.wear.data.poolInk
-import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.remainingMs
 import app.aether.wear.presentation.components.PowerRing
 import app.aether.wear.presentation.theme.Danger
@@ -71,9 +74,13 @@ fun ListScreen(
     if (pools.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PowerRing(0, 1, Modifier.size(64.dp), stroke = 9f)
+                Image(
+                    painter = painterResource(R.drawable.ic_logo),
+                    contentDescription = "Poweratti",
+                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(18.dp)),
+                )
                 Spacer(Modifier.height(8.dp))
-                Text("AETHER", style = MaterialTheme.typography.title2)
+                Text("POWERATTI", style = MaterialTheme.typography.title2)
                 Text(
                     "Add a power pool",
                     style = MaterialTheme.typography.body2,
@@ -97,7 +104,7 @@ fun ListScreen(
             state = listState,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item { ListHeader { Text("Aether") } }
+            item { ListHeader { Text("Poweratti") } }
             items(pools, key = { it.id }) { pool ->
                 PoolChip(
                     pool = pool,

@@ -40,7 +40,7 @@ fun AetherApp(vm: PoolViewModel = viewModel()) {
             ) {
                 if (!state.ready) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Aether", color = MaterialTheme.colors.onBackground)
+                        Text("Poweratti", color = MaterialTheme.colors.onBackground)
                     }
                 } else {
                     BackHandler(enabled = state.route !is Route.Pools) { vm.back() }

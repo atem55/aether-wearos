@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Aether"
+rootProject.name = "Poweratti"
 include(":app")
