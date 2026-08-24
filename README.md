@@ -14,8 +14,9 @@ Source: [github.com/atem55/aether-wearos](https://github.com/atem55/aether-wearo
 - Optional regen: amount + interval in minutes (e.g. 1 every 5 minutes)
 - Regen never goes above max; the timer only runs while you are below max
 - Regenerating pools have a radio on the right — only the selected one counts down; the others pause
+- The armed pool has a pause / play control in its chip so you can freeze **all** regen (lunch, etc.)
 - A regenerating pool hitting 0 fires a strong vibration
-- Missed ticks on the armed pool catch up if the app was in the background
+- Missed ticks on the armed pool catch up if the app was in the background (unless halted)
 - Main list has + / − on each pool, plus a compact **Add pool** button
 - Trash a pool, or clear all
 
@@ -29,19 +30,6 @@ You need [Android Studio](https://developer.android.com/studio) on a computer (t
 4. **Settings → Developer options** → turn on **ADB debugging** and **Debug over Wi‑Fi**.
 5. Pair the watch in Android Studio’s device dropdown (or use the Wear OS pairing assistant).
 6. Click **Run**. Aether installs and opens on the watch.
-
-### Sideload the debug APK
-
-If you already have `app-debug.apk` (included in the project zip):
-
-1. Enable ADB debugging over Wi‑Fi on the watch.
-2. From a computer with [platform-tools](https://developer.android.com/tools/releases/platform-tools):
-
-```
-adb connect WATCH_IP:5555
-adb install -r app-debug.apk
-adb shell am start -n app.aether.wear/.presentation.MainActivity
-```
 
 The app is signed with a debug key so you can sideload it. For Play Store you’d generate your own release keystore.
 
