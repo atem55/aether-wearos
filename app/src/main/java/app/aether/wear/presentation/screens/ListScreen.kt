@@ -45,6 +45,8 @@ import app.aether.wear.data.PowerPool
 import app.aether.wear.data.formatCountdown
 import app.aether.wear.data.frozenRemainingMs
 import app.aether.wear.data.intervalLabel
+import app.aether.wear.data.poolColor
+import app.aether.wear.data.poolInk
 import app.aether.wear.data.regenAmountOf
 import app.aether.wear.data.remainingMs
 import app.aether.wear.presentation.components.PowerRing
@@ -158,7 +160,9 @@ private fun PoolChip(
         pool.regenEnabled -> "Full · +${regenAmountOf(pool)}/${intervalLabel(pool.intervalMs)}"
         else -> "Static"
     }
-    val extraColor = if (ticking && remain != null) Teal else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+    val ink = poolInk(pool.lightText)
+    val fill = poolColor(pool.colorHex)
+    val extraColor = if (ticking && remain != null) ink else ink.copy(alpha = 0.75f)
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -168,7 +172,7 @@ private fun PoolChip(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colors.surface)
+                    .background(fill)
                     .padding(start = 8.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -181,7 +185,7 @@ private fun PoolChip(
                     PowerRing(pool.current, pool.max, Modifier.size(26.dp), stroke = 5f)
                     Spacer(Modifier.width(6.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(pool.name.uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis, color = ink)
                         Text(extra, maxLines = 1, overflow = TextOverflow.Ellipsis, color = extraColor, style = MaterialTheme.typography.caption2)
                     }
                 }
@@ -200,9 +204,10 @@ private fun PoolChip(
                 }
             }
             if (pool.regenEnabled) {
+                Spacer(Modifier.width(4.dp))
                 Button(
                     onClick = onArm,
-                    modifier = Modifier.size(ButtonDefaults.ExtraSmallButtonSize),
+                    modifier = Modifier.size(ButtonDefaults.SmallButtonSize),
                     colors = ButtonDefaults.secondaryButtonColors(),
                 ) {
                     Icon(
