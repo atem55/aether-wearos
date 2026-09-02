@@ -2,6 +2,7 @@ package app.aether.wear.presentation
 
 import android.app.Application
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -82,9 +83,11 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         }
         val latest = _state.value
         if (latest.regenHalted != halted || latest.activeRegenId != armed) return
+        val gained = next.zip(current.pools).any { (after, before) -> after.current > before.current }
         val changed = next != current.pools
         _state.value = latest.copy(pools = next, now = now)
         if (changed) persist(next, armed, halted)
+        if (gained) regenPulse()
     }
 
     private fun persist(pools: List<PowerPool>, activeRegenId: String?, regenHalted: Boolean) {
@@ -193,15 +196,39 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         if (emptied) depletePulse()
     }
 
-    private fun depletePulse() {
+    private fun vibrator(): Vibrator? {
         val app = getApplication<Application>()
-        val vibrator = if (Build.VERSION.SDK_INT >= 31) {
+        return if (Build.VERSION.SDK_INT >= 31) {
             app.getSystemService(VibratorManager::class.java)?.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
             app.getSystemService(Vibrator::class.java)
-        } ?: return
-        val pattern = longArrayOf(0, 450, 90, 450, 90, 780)
-        vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        }
+    }
+
+    private fun pulse(effect: VibrationEffect, usage: Int) {
+        val vibrator = vibrator() ?: return
+        if (Build.VERSION.SDK_INT >= 33) {
+            vibrator.vibrate(
+                effect,
+                VibrationAttributes.Builder().setUsage(usage).build(),
+            )
+        } else {
+            vibrator.vibrate(effect)
+        }
+    }
+
+    private fun regenPulse() {
+        pulse(
+            VibrationEffect.createOneShot(180, VibrationEffect.DEFAULT_AMPLITUDE),
+            VibrationAttributes.USAGE_ALARM,
+        )
+    }
+
+    private fun depletePulse() {
+        pulse(
+            VibrationEffect.createWaveform(longArrayOf(0, 450, 90, 450, 90, 780), -1),
+            VibrationAttributes.USAGE_ALARM,
+        )
     }
 }

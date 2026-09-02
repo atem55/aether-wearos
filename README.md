@@ -18,6 +18,7 @@ Source: [github.com/atem55/aether-wearos](https://github.com/atem55/aether-wearo
 - Main list has + / − on each pool, plus a compact **Add pool** button
 - Regenerating pools have a radio on the right — only the selected one counts down; the others pause
 - The armed pool has a pause / play control in its chip so you can freeze **all** regen (lunch, etc.)
+- A regenerating pool gaining power fires a short vibration
 - A regenerating pool hitting 0 fires a strong vibration
 - Trash a pool, or clear all
 
