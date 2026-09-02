@@ -1,11 +1,6 @@
 package app.aether.wear.presentation
 
 import android.app.Application
-import android.os.Build
-import android.os.VibrationAttributes
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.aether.wear.data.MAX_POOLS
@@ -13,17 +8,14 @@ import app.aether.wear.data.PoolDraft
 import app.aether.wear.data.PoolRepository
 import app.aether.wear.data.PowerPool
 import app.aether.wear.data.afterSpend
-import app.aether.wear.data.applyRegen
 import app.aether.wear.data.firstRegenId
 import app.aether.wear.data.newPoolId
-import app.aether.wear.data.pauseRegen
 import app.aether.wear.data.syncRegen
-import kotlinx.coroutines.Job
+import app.aether.wear.regen.RegenController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 sealed interface Route {
@@ -47,52 +39,31 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = PoolRepository(application)
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
-    private var persistJob: Job? = null
 
     init {
         viewModelScope.launch {
-            val stored = repo.saved.first()
-            val now = System.currentTimeMillis()
-            val armed = stored.activeRegenId
-            val halted = stored.regenHalted
-            val caught = syncRegen(stored.pools, armed, now, halted)
-            _state.value = _state.value.copy(
-                pools = caught,
-                activeRegenId = armed,
-                regenHalted = halted,
-                now = now,
-                ready = true,
-            )
-            if (caught != stored.pools) persist(caught, armed, halted)
+            repo.update { stored ->
+                val now = System.currentTimeMillis()
+                stored.copy(pools = syncRegen(stored.pools, stored.activeRegenId, now, stored.regenHalted))
+            }
+            RegenController.sync(getApplication())
+        }
+        viewModelScope.launch {
+            repo.saved.collect { stored ->
+                _state.value = _state.value.copy(
+                    pools = stored.pools,
+                    activeRegenId = stored.activeRegenId,
+                    regenHalted = stored.regenHalted,
+                    ready = true,
+                )
+            }
         }
         viewModelScope.launch {
             while (true) {
                 delay(250)
-                tick()
+                _state.value = _state.value.copy(now = System.currentTimeMillis())
             }
         }
-    }
-
-    private fun tick() {
-        val now = System.currentTimeMillis()
-        val current = _state.value
-        val armed = current.activeRegenId
-        val halted = current.regenHalted
-        val next = current.pools.map { p ->
-            if (!halted && p.id == armed) applyRegen(p, now) else pauseRegen(p, now)
-        }
-        val latest = _state.value
-        if (latest.regenHalted != halted || latest.activeRegenId != armed) return
-        val gained = next.zip(current.pools).any { (after, before) -> after.current > before.current }
-        val changed = next != current.pools
-        _state.value = latest.copy(pools = next, now = now)
-        if (changed) persist(next, armed, halted)
-        if (gained) regenPulse()
-    }
-
-    private fun persist(pools: List<PowerPool>, activeRegenId: String?, regenHalted: Boolean) {
-        persistJob?.cancel()
-        persistJob = viewModelScope.launch { repo.save(pools, activeRegenId, regenHalted) }
     }
 
     private fun commit(
@@ -101,7 +72,10 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         regenHalted: Boolean = _state.value.regenHalted,
     ) {
         _state.value = _state.value.copy(pools = pools, activeRegenId = activeRegenId, regenHalted = regenHalted)
-        persist(pools, activeRegenId, regenHalted)
+        viewModelScope.launch {
+            repo.save(pools, activeRegenId, regenHalted)
+            RegenController.sync(getApplication())
+        }
     }
 
     fun open(id: String) { _state.value = _state.value.copy(route = Route.Detail(id)) }
@@ -185,50 +159,9 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
         val armed = _state.value.activeRegenId
         val tickingId = if (_state.value.regenHalted) null else armed
-        var emptied = false
         val next = _state.value.pools.map { p ->
-            if (p.id != id) return@map p
-            val updated = afterSpend(p, p.current + delta, now, p.id == tickingId)
-            if (p.regenEnabled && p.current > 0 && updated.current == 0) emptied = true
-            updated
+            if (p.id != id) p else afterSpend(p, p.current + delta, now, p.id == tickingId)
         }
         commit(next, armed)
-        if (emptied) depletePulse()
-    }
-
-    private fun vibrator(): Vibrator? {
-        val app = getApplication<Application>()
-        return if (Build.VERSION.SDK_INT >= 31) {
-            app.getSystemService(VibratorManager::class.java)?.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            app.getSystemService(Vibrator::class.java)
-        }
-    }
-
-    private fun pulse(effect: VibrationEffect, usage: Int) {
-        val vibrator = vibrator() ?: return
-        if (Build.VERSION.SDK_INT >= 33) {
-            vibrator.vibrate(
-                effect,
-                VibrationAttributes.Builder().setUsage(usage).build(),
-            )
-        } else {
-            vibrator.vibrate(effect)
-        }
-    }
-
-    private fun regenPulse() {
-        pulse(
-            VibrationEffect.createOneShot(180, VibrationEffect.DEFAULT_AMPLITUDE),
-            VibrationAttributes.USAGE_ALARM,
-        )
-    }
-
-    private fun depletePulse() {
-        pulse(
-            VibrationEffect.createWaveform(longArrayOf(0, 450, 90, 450, 90, 780), -1),
-            VibrationAttributes.USAGE_ALARM,
-        )
     }
 }

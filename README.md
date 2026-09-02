@@ -18,9 +18,11 @@ Source: [github.com/atem55/aether-wearos](https://github.com/atem55/aether-wearo
 - Main list has + / − on each pool, plus a compact **Add pool** button
 - Regenerating pools have a radio on the right — only the selected one counts down; the others pause
 - The armed pool has a pause / play control in its chip so you can freeze **all** regen (lunch, etc.)
-- A regenerating pool gaining power fires a short vibration
-- A regenerating pool hitting 0 fires a strong vibration
+- A regenerating pool gaining power fires a short vibration, including while the app is in the background
+- Manual + / − does not vibrate — emptying a pool is only done from the UI
 - Trash a pool, or clear all
+
+While a pool is regenerating you will see a small ongoing “Regen running” indicator. That is what keeps the timer and buzzes alive after you leave the app. Pause regen or fill the pool to max and it goes away.
 
 ## Install on your Galaxy Watch Ultra
 
@@ -32,6 +34,8 @@ You need [Android Studio](https://developer.android.com/studio) on a computer (t
 4. **Settings → Developer options** → turn on **ADB debugging** and **Debug over Wi‑Fi**.
 5. Pair the watch in Android Studio’s device dropdown (or use the Wear OS pairing assistant).
 6. Click **Run**. Poweratti installs and opens on the watch.
+
+If the watch later stops buzzing after sitting on the watch face for a long time, check **Settings → Apps → Poweratti → Battery** and allow background / unrestricted use.
 
 ### Sideload the debug APK
 

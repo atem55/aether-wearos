@@ -74,3 +74,11 @@ fun afterSpend(pool: PowerPool, nextCurrent: Int, now: Long, ticking: Boolean): 
         ?: next.intervalMs
     return next.copy(nextRegenAt = null, pausedRemainingMs = remain)
 }
+
+fun SavedPools.tickingPool(): PowerPool? {
+    if (regenHalted) return null
+    val id = activeRegenId ?: return null
+    return pools.firstOrNull { it.id == id && it.regenEnabled && it.current < it.max }
+}
+
+fun SavedPools.isTicking(): Boolean = tickingPool() != null
