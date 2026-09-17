@@ -57,7 +57,8 @@ class RegenService : Service() {
             val now = System.currentTimeMillis()
             val result = repo.applyTick(now)
             if (result.gained) {
-                val name = result.saved.tickingName()
+                val id = result.saved.activeRegenId
+                val name = result.saved.pools.firstOrNull { it.id == id }?.name
                 Haptics.regen(applicationContext, name)
             }
             if (!result.keepRunning) {
@@ -119,9 +120,4 @@ class RegenService : Service() {
         const val CHANNEL_ID = "regen"
         const val NOTIF_ID = 41
     }
-}
-
-private fun app.aether.wear.data.TickResult.tickingName(): String? {
-    val id = saved.activeRegenId ?: return null
-    return saved.pools.firstOrNull { it.id == id }?.name
 }
