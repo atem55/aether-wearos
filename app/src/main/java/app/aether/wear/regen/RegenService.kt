@@ -47,7 +47,6 @@ class RegenService : Service() {
     }
 
     override fun onDestroy() {
-        RegenScheduler.cancel(applicationContext)
         scope.cancel()
         super.onDestroy()
     }
@@ -56,7 +55,7 @@ class RegenService : Service() {
         while (scope.isActive) {
             val now = System.currentTimeMillis()
             val result = repo.applyTick(now)
-            if (result.gained) {
+            if (result.buzz) {
                 val id = result.saved.activeRegenId
                 val name = result.saved.pools.firstOrNull { it.id == id }?.name
                 Haptics.regen(applicationContext, name)

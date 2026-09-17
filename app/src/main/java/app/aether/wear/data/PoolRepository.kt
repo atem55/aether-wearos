@@ -20,6 +20,8 @@ private val KEY_POOLS = stringPreferencesKey("pools_json")
 private val KEY_ACTIVE = stringPreferencesKey("active_regen_id")
 private val KEY_HALTED = booleanPreferencesKey("regen_halted")
 
+private const val RECENT_TICK_MS = 15_000L
+
 data class SavedPools(
     val pools: List<PowerPool>,
     val activeRegenId: String?,
@@ -29,6 +31,7 @@ data class SavedPools(
 data class TickResult(
     val saved: SavedPools,
     val gained: Boolean,
+    val buzz: Boolean,
     val keepRunning: Boolean,
     val nextRegenAt: Long?,
 )
@@ -56,20 +59,24 @@ class PoolRepository(private val context: Context) {
 
     suspend fun applyTick(now: Long): TickResult = mutex.withLock {
         var gained = false
+        var buzz = false
         var next = SavedPools(emptyList(), null, false)
         context.poolDataStore.edit { prefs ->
             val current = decode(prefs)
+            val due = current.tickingPool()?.nextRegenAt
             val pools = current.pools.map { p ->
                 if (!current.regenHalted && p.id == current.activeRegenId) applyRegen(p, now)
                 else pauseRegen(p, now)
             }
             gained = pools.zip(current.pools).any { (after, before) -> after.current > before.current }
+            buzz = gained && due != null && now - due <= RECENT_TICK_MS
             next = current.copy(pools = pools)
             write(prefs, next)
         }
         TickResult(
             saved = next,
             gained = gained,
+            buzz = buzz,
             keepRunning = next.isTicking(),
             nextRegenAt = next.tickingPool()?.nextRegenAt,
         )

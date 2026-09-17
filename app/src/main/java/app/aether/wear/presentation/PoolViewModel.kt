@@ -67,7 +67,7 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
                 val now = System.currentTimeMillis()
                 val result = repo.applyTick(now)
                 _state.value = _state.value.copy(now = now)
-                if (result.gained) {
+                if (result.buzz) {
                     val name = result.saved.pools.firstOrNull { it.id == result.saved.activeRegenId }?.name
                     Haptics.regen(getApplication(), name, hostView)
                 }
