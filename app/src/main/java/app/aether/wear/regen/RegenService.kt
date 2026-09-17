@@ -15,7 +15,6 @@ import androidx.wear.ongoing.Status
 import app.aether.wear.R
 import app.aether.wear.data.Haptics
 import app.aether.wear.data.PoolRepository
-import app.aether.wear.data.isTicking
 import app.aether.wear.presentation.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +56,10 @@ class RegenService : Service() {
         while (scope.isActive) {
             val now = System.currentTimeMillis()
             val result = repo.applyTick(now)
-            if (result.gained) Haptics.regen(applicationContext)
+            if (result.gained) {
+                val name = result.saved.tickingName()
+                Haptics.regen(applicationContext, name)
+            }
             if (!result.keepRunning) {
                 RegenScheduler.cancel(applicationContext)
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -97,12 +99,14 @@ class RegenService : Service() {
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setContentIntent(tap)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        OngoingActivity.Builder(applicationContext, NOTIF_ID, builder)
-            .setStaticIcon(R.drawable.ic_regen)
-            .setTouchIntent(tap)
-            .setStatus(Status.forPart(Status.TextPart("Regen")))
-            .build()
-            .apply(applicationContext)
+        runCatching {
+            OngoingActivity.Builder(applicationContext, NOTIF_ID, builder)
+                .setStaticIcon(R.drawable.ic_regen)
+                .setTouchIntent(tap)
+                .setStatus(Status.forPart(Status.TextPart("Regen")))
+                .build()
+                .apply(applicationContext)
+        }
         val notification: Notification = builder.build()
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
@@ -115,4 +119,9 @@ class RegenService : Service() {
         const val CHANNEL_ID = "regen"
         const val NOTIF_ID = 41
     }
+}
+
+private fun app.aether.wear.data.TickResult.tickingName(): String? {
+    val id = saved.activeRegenId ?: return null
+    return saved.pools.firstOrNull { it.id == id }?.name
 }

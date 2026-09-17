@@ -3,6 +3,7 @@ package app.aether.wear.presentation
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.aether.wear.data.Haptics
 import app.aether.wear.data.MAX_POOLS
 import app.aether.wear.data.PoolDraft
 import app.aether.wear.data.PoolRepository
@@ -61,7 +62,13 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             while (true) {
                 delay(250)
-                _state.value = _state.value.copy(now = System.currentTimeMillis())
+                val now = System.currentTimeMillis()
+                val result = repo.applyTick(now)
+                _state.value = _state.value.copy(now = now)
+                if (result.gained) {
+                    val name = result.saved.pools.firstOrNull { it.id == result.saved.activeRegenId }?.name
+                    Haptics.regen(getApplication(), name)
+                }
             }
         }
     }
