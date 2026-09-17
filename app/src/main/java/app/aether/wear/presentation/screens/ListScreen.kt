@@ -70,7 +70,6 @@ fun ListScreen(
     onAdjust: (String, Int) -> Unit,
     onArmRegen: (String) -> Unit,
     onToggleHalt: () -> Unit,
-    onTestBuzz: () -> Unit = {},
 ) {
     if (pools.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -135,12 +134,6 @@ fun ListScreen(
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                     )
                 }
-            }
-            item {
-                CompactChip(
-                    onClick = onTestBuzz,
-                    label = { Text("Test buzz") },
-                )
             }
             item {
                 CompactChip(

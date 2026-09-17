@@ -59,7 +59,6 @@ fun AetherApp(vm: PoolViewModel = viewModel()) {
                             onAdjust = vm::adjust,
                             onArmRegen = vm::setActiveRegen,
                             onToggleHalt = vm::toggleRegenHalt,
-                            onTestBuzz = vm::testBuzz,
                         )
                         is Route.Detail -> {
                             val pool = state.pools.firstOrNull { it.id == dest.id }
