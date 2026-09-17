@@ -1,6 +1,7 @@
 package app.aether.wear.presentation
 
 import android.app.Application
+import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.aether.wear.data.Haptics
@@ -40,6 +41,7 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = PoolRepository(application)
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
+    @Volatile var hostView: View? = null
 
     init {
         viewModelScope.launch {
@@ -67,10 +69,14 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
                 _state.value = _state.value.copy(now = now)
                 if (result.gained) {
                     val name = result.saved.pools.firstOrNull { it.id == result.saved.activeRegenId }?.name
-                    Haptics.regen(getApplication(), name)
+                    Haptics.regen(getApplication(), name, hostView)
                 }
             }
         }
+    }
+
+    fun testBuzz() {
+        Haptics.regen(getApplication(), "Test", hostView)
     }
 
     private fun commit(
@@ -151,7 +157,10 @@ class PoolViewModel(application: Application) : AndroidViewModel(application) {
     fun setActiveRegen(id: String) {
         val target = _state.value.pools.firstOrNull { it.id == id } ?: return
         if (!target.regenEnabled) return
-        if (_state.value.activeRegenId == id) return
+        if (_state.value.activeRegenId == id) {
+            testBuzz()
+            return
+        }
         val now = System.currentTimeMillis()
         commit(syncRegen(_state.value.pools, id, now, _state.value.regenHalted), id)
     }

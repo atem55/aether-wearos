@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,6 +27,7 @@ import app.aether.wear.presentation.theme.Screen
 @Composable
 fun AetherApp(vm: PoolViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    vm.hostView = LocalView.current
     AetherTheme {
         Box(
             Modifier
@@ -57,6 +59,7 @@ fun AetherApp(vm: PoolViewModel = viewModel()) {
                             onAdjust = vm::adjust,
                             onArmRegen = vm::setActiveRegen,
                             onToggleHalt = vm::toggleRegenHalt,
+                            onTestBuzz = vm::testBuzz,
                         )
                         is Route.Detail -> {
                             val pool = state.pools.firstOrNull { it.id == dest.id }
